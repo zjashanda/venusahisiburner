@@ -374,11 +374,16 @@ def phase_recover(ctx: dict, chip) -> dict:
 
 
 def _artifacts(run_dir: Path) -> dict[str, str]:
+    """Hash every evidence file that is final once the receipt is written.
+
+    ``run.receipt.json`` and ``state.json`` are excluded: both change after
+    hashing (the receipt is written after this step; the state gains the
+    receipt entry). Their content is covered by ``completed_steps`` and the
+    receipt body itself.
+    """
     out: dict[str, str] = {}
     for path in sorted(run_dir.rglob("*")):
-        if not path.is_file():
-            continue
-        if path.name == "run.receipt.json":
+        if not path.is_file() or path.name in {"run.receipt.json", "state.json"}:
             continue
         out[str(path.relative_to(run_dir)).replace("\\", "/")] = sha256_file(path)
     return out

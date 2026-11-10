@@ -99,6 +99,18 @@ class StateMachineTests(unittest.TestCase):
         self.assertTrue(is_bj_timestamp(payload["at"]))
         self.assertEqual(payload["step"], "burn:venusa")
 
+    def test_receipt_hash_list_excludes_mutable_files(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "steps").mkdir()
+            (root / "steps" / "preflight.json").write_text("{}", encoding="utf-8")
+            (root / "state.json").write_text("{}", encoding="utf-8")
+            (root / "run.receipt.json").write_text("{}", encoding="utf-8")
+            hashed = phases_module._artifacts(root)
+        self.assertIn("steps/preflight.json", hashed)
+        self.assertNotIn("state.json", hashed)
+        self.assertNotIn("run.receipt.json", hashed)
+
 
 class BenchLockTests(unittest.TestCase):
     def lock_path(self) -> Path:
