@@ -1,0 +1,78 @@
+{
+  "schema": "venusahisiburner-profile/v1",
+  "name": "midea-csk6",
+  "node": "pvm1005",
+  "board_family": "midea",
+  "board": "Midea CSK6 voice board (Linepad/Home firmware family)",
+  "status": "draft",
+  "time_contract": "beijing-no-offset",
+  "preflight_window_s": 6,
+  "verified": null,
+  "control": {
+    "kind": "external-script",
+    "script": "auto_burn.py",
+    "script_note": "the Media project drives CSK6 burn mode entry and power through its own auto_burn.py; this profile must never reuse TCL's uut-switch1/COM6 sequence",
+    "port": null,
+    "baud": null,
+    "line_ending": "crlf",
+    "commands": {},
+    "forbidden_commands": [
+      "uut-reset",
+      "uut-csk-reset",
+      "uut-burn"
+    ],
+    "timing": null
+  },
+  "chips": [
+    {
+      "id": "csk6",
+      "chip": "CSK6 / VenusA (Midea)",
+      "boot": {
+        "required": false,
+        "method": null,
+        "note": "Media enters burn mode through its own auto_burn.py (CSK6_Burn.bat); not measured on pvm1005 yet"
+      },
+      "transport": {
+        "log_port": null,
+        "log_baud": null,
+        "burn_port": null,
+        "burn_baud": null
+      },
+      "burn": {
+        "driver": "csk6-batch",
+        "tool": null,
+        "image": null,
+        "batch": "CSK6_Burn.bat",
+        "note": "CSK6_Burn.bat with direct/batch runner; repository-specific, no SHA-256 registered yet"
+      },
+      "verify": {
+        "version_key": "csk6_app",
+        "require_keys": ["csk6_app"],
+        "expect": null,
+        "window_s": null
+      },
+      "recover": {
+        "required": false,
+        "driver": "none",
+        "note": "no FTM factory-mode step is known for the Media bench; do not inherit TCL's AT+FTM=0 timing"
+      }
+    }
+  ],
+  "measurement_required": [
+    "control.script path of the Media auto_burn.py on this node",
+    "CSK6 log port and baud",
+    "CSK6 flash/burn port and baud",
+    "CSK6 power-cut / power-restore mechanism (project-specific, not uut-switch1)",
+    "CSK6_Burn.bat location plus tool and image SHA-256 registered in assets/manifest.json",
+    "expected CSK6 app version string for verify.expect"
+  ],
+  "acceptance": {
+    "independent_items": [
+      "dry-run plan renders without touching any TCL port",
+      "write steps stay refused while status=draft",
+      "no uut-switch1 / uut-csk-boot / COM6 / 921600 / AT+FTM=0 value is inherited from the TCL profile",
+      "Media bench regression is a separate acceptance run, never piggybacked on the TCL baseline receipt"
+    ],
+    "differences_reference": "references/profile-contract.md#tcl-vs-media美的"
+  }
+}

@@ -1,0 +1,139 @@
+{
+  "schema": "venusahisiburner-profile/v1",
+  "name": "tcl-pvm1005",
+  "node": "pvm1005",
+  "board_family": "tcl",
+  "board": "TCL-CSK7-HI3863",
+  "status": "measured",
+  "time_contract": "beijing-no-offset",
+  "preflight_window_s": 6,
+  "verified": {
+    "on": "2026-11-10",
+    "by": "NOAH-44 / NOAH-39 / NOAH-37",
+    "evidence": "tasks/noah-44 (baseline V0.0.41 + V8-H363T20-WFMV206.111.1.16 regression)"
+  },
+  "control": {
+    "kind": "serial-relay",
+    "port": "COM6",
+    "baud": 115200,
+    "line_ending": "crlf",
+    "commands": {
+      "power_cut": "uut-switch1.on",
+      "power_restore": "uut-switch1.off",
+      "strap_on": "uut-csk-boot.on",
+      "strap_off": "uut-csk-boot.off"
+    },
+    "receipt_tokens": {
+      "uut-switch1": "switch_idx1_set",
+      "uut-csk-boot": "csk6012_boot_set"
+    },
+    "receipt_fallback": "switch_idx1_set",
+    "forbidden_commands": [
+      "uut-reset",
+      "uut-csk-reset",
+      "uut-burn"
+    ],
+    "forbidden_reason": "uut-reset/uut-csk-reset/uut-burn belong to the win009/CSK6 bench; pvm1005 TCL power control is uut-switch1.on/off only",
+    "timing": {
+      "cut_to_strap_s": 2.0,
+      "strap_to_restore_s": 1.0,
+      "restore_to_strap_off_s": 8.0,
+      "restore_to_verify_s": 2.5,
+      "cycle_hold_s": 2.5
+    }
+  },
+  "chips": [
+    {
+      "id": "venusa",
+      "chip": "CSK7 / VenusA",
+      "boot": {
+        "required": true,
+        "method": "control-strap"
+      },
+      "transport": {
+        "log_port": "COM3",
+        "log_baud": 921600,
+        "burn_port": "COM3",
+        "burn_baud": 3000000
+      },
+      "burn": {
+        "driver": "venusa-uart",
+        "tool": "csk-uart-burn-tool",
+        "image": "tcl-csk7-v0.0.41",
+        "image_addr": "0x0",
+        "tool_args": ["-l", "-m", "-d", "-s"],
+        "success_markers": ["MD5 CHECK SUCCESS", "FLASH DOWNLOAD SUCCESS"],
+        "timeout_s": 600,
+        "image_addr_note": "fw.img is the 16 MiB full image -> 0x0. 0x40000 is the venusa.bin partition, never mix them"
+      },
+      "verify": {
+        "version_key": "csk_app",
+        "require_keys": ["csk_app", "csk_boot"],
+        "expect": "asr_dsp/SP-LVM141-A-ChXx-FX-V0.0.41",
+        "window_s": 45,
+        "cross_check": {
+          "source": "hisi",
+          "token": "CSK Version"
+        }
+      },
+      "recover": {
+        "required": false
+      }
+    },
+    {
+      "id": "hisi",
+      "chip": "HI3863 / WS63",
+      "boot": {
+        "required": false
+      },
+      "transport": {
+        "log_port": "COM4",
+        "log_baud": 921600,
+        "burn_port": "4",
+        "burn_baud": 1000000
+      },
+      "burn": {
+        "driver": "hisi-burntool",
+        "tool": "hisi-burntool-gold",
+        "image": "hisi-ws63-v8-h363t20-wfmv206.111.1.16",
+        "chip_type": "13",
+        "signal_baud": 1000000,
+        "onlyburn_parts": [
+          "root_loaderboot_sign.bin",
+          "root_params_sign.bin",
+          "ssb_sign.bin",
+          "flashboot_sign.bin",
+          "flashboot_backup_sign.bin",
+          "ws63_all_nv.bin",
+          "ws63-liteos-app-sign.bin",
+          "efuse_cfg.bin",
+          "ws63-liteos-mfg-sign.bin"
+        ],
+        "success_tokens": ["成功", "完成"],
+        "failure_tokens": ["失败"],
+        "timeout_s": 420
+      },
+      "verify": {
+        "version_key": "hisi_sys_ver",
+        "require_keys": ["hisi_sys_ver"],
+        "expect": "V8-H363T20-WFMV206.111.1.16",
+        "window_s": 40
+      },
+      "recover": {
+        "required": true,
+        "before_verify": true,
+        "driver": "ftm-clear",
+        "port_key": "log_port",
+        "baud": 115200,
+        "command": "AT+FTM=0",
+        "ack_tokens": ["FTM SWITCH", "OK"],
+        "post": "none",
+        "note": "BurnTool leaves the chip in factory FTM mode; AT+FTM=0 at 115200 is mandatory before the 921600 boot check"
+      }
+    }
+  ],
+  "result": {
+    "phase_schema": "venusahisiburner-phase/v1",
+    "receipt_schema": "venusahisiburner-receipt/v1"
+  }
+}

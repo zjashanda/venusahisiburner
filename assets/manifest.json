@@ -1,0 +1,107 @@
+{
+  "schema": "venusahisiburner-assets/v1",
+  "description": "One tool/firmware manifest for every project profile. Tools are referenced here, never copied into a project skill.",
+  "oss": {
+    "provider": "ark-oss",
+    "endpoint_env": "ARK_OSS_ENDPOINT",
+    "bucket_env": "ARK_OSS_BUCKET",
+    "credential": {
+      "mode": "env-only",
+      "access_key_env": "ARK_OSS_ACCESS_KEY_ID",
+      "secret_key_env": "ARK_OSS_ACCESS_KEY_SECRET",
+      "persist": false,
+      "boundary": "credentials are read from the environment at download time and are never written to the skill, a manifest, a log or a receipt"
+    }
+  },
+  "assets": [
+    {
+      "id": "csk-uart-burn-tool",
+      "kind": "tool",
+      "target_chip": "CSK7/VenusA",
+      "version": "1.0.10",
+      "file": "Uart_Burn_Tool.exe",
+      "bytes": 10892822,
+      "sha256": "56aefe470dd40afe572e652e6560bc252643728c1dbd4d2f63daf4582f88001e",
+      "oss": {
+        "key": "csk/venusa-uart-burn-tool/1.0.10/Uart_Burn_Tool.exe",
+        "object": "Uart_Burn_Tool.exe",
+        "download": "ossutil"
+      },
+      "install": {
+        "material_rel": "csk/extracted/firmware/Uart_Burn_Tool.exe",
+        "cache_rel": "tools/csk/venusa-uart-burn-tool/1.0.10/Uart_Burn_Tool.exe"
+      },
+      "provenance": {
+        "source": "HAS_TCL_CSK7_HI3863_LZX_20261103_TEST_V0.0.41.zip (mail uid 159)",
+        "note": "in-record Uart_Burn_Tool 1.0.10; SLIP + boot protocol; ships inside the CSK firmware zip"
+      }
+    },
+    {
+      "id": "hisi-burntool-gold",
+      "kind": "tool",
+      "target_chip": "HI3863/WS63",
+      "version": "unversioned-20261027",
+      "file": "BurnTool.exe",
+      "bytes": 1840128,
+      "sha256": "4bd51bc3ee3e32c8da50698bb92b80a63f631dfa1d9cb1a412a1a5b4ba21cc0f",
+      "oss": {
+        "key": "hisi/burntool-gold/20261027/BurnTool.exe",
+        "object": "BurnTool.exe",
+        "download": "ossutil"
+      },
+      "install": {
+        "material_rel": "hisi/extracted/VenusA+WS63/BurnTool_Gold/BurnTool.exe",
+        "cache_rel": "tools/hisi/burntool-gold/20261027/BurnTool.exe"
+      },
+      "provenance": {
+        "source": "VenusA+WS63 tool pack delivered with the HISI firmware mail (uid 111/148)",
+        "note": "no embedded version resource; sha256 is the identity. Needs the sibling DLLs of BurnTool_Gold on the node cache"
+      }
+    },
+    {
+      "id": "tcl-csk7-v0.0.41",
+      "kind": "firmware",
+      "target_chip": "CSK7/VenusA",
+      "version": "V0.0.41",
+      "file": "fw.img",
+      "bytes": 16777216,
+      "sha256": "e2515c52a17140d04b2f3220f00506c2d860515d0217bbbb0c4c41430c84a028",
+      "oss": {
+        "key": "firmware/tcl-csk7/V0.0.41/fw.img",
+        "object": "fw.img",
+        "download": "ossutil"
+      },
+      "install": {
+        "material_rel": "csk/extracted/firmware/fw.img"
+      },
+      "provenance": {
+        "source": "HAS_TCL_CSK7_HI3863_LZX_20261103_TEST_V0.0.41.zip (mail uid 159)",
+        "zip_sha256": "1e703ad84be24e94626918d994c07f9f4c3eb2aa066417cb33e6e821a322dac1",
+        "note": "16 MiB full-flash image, write at 0x0; embeds V0.0.41"
+      }
+    },
+    {
+      "id": "hisi-ws63-v8-h363t20-wfmv206.111.1.16",
+      "kind": "firmware",
+      "target_chip": "HI3863/WS63",
+      "version": "V8-H363T20-WFMV206.111.1.16",
+      "file": "V8-H363T20-WFMV206.111.1.16.bin",
+      "bytes": 3694352,
+      "sha256": "ed2eaf013cc761ede525704a0cae3ccca4bbaf9e6f78cf99f45af7e6bf7927f4",
+      "oss": {
+        "key": "firmware/hisi-ws63/V8-H363T20-WFMV206.111.1.16/V8-H363T20-WFMV206.111.1.16.bin",
+        "object": "V8-H363T20-WFMV206.111.1.16.bin",
+        "download": "ossutil"
+      },
+      "install": {
+        "material_rel": "hisi/V8-H363T20-WFMV206.111.1.16.bin"
+      },
+      "provenance": {
+        "source": "HISI firmware mail uid 148 (【最新海思固件及APP版本同步】)",
+        "note": "baseline upper-MCU image; BurnTool needs -chiptype:13 (WS63)"
+      }
+    }
+  ],
+  "updated_at": "2026-11-10T14:10:00.000",
+  "updated_by": "NOAH-44"
+}
