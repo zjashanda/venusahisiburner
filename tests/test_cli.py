@@ -135,7 +135,7 @@ class BenchLockTests(unittest.TestCase):
 
     def test_stale_lock_from_dead_pid_is_taken_over(self):
         path = self.lock_path()
-        path.write_text(json.dumps({"pid": 999999, "since": "2026-11-10T10:00:00.000"}), encoding="utf-8")
+        path.write_text(json.dumps({"pid": 999999, "since": "2026-11-10 10:00:00"}), encoding="utf-8")
         with bench_module.BenchLock("pvm1005", path) as lock:
             self.assertTrue(lock.held)
             self.assertIn(str(os.getpid()), path.read_text(encoding="utf-8"))

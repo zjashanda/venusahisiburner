@@ -3,12 +3,20 @@
 ## 1. 时间契约（硬）
 
 - 时区：北京时间（Asia/Shanghai）。
-- 字符串格式：`YYYY-MM-DDThh:mm:ss.sss`，毫秒 3 位。
-- **不带任何时区后缀**：`+08:00`、`Z`、`UTC` 都是违约。
-- 实现：`core/contract.py: now_bj()`；`is_bj_timestamp()` 会拒绝带偏移的字符串。
+- 字符串格式：`YYYY-MM-DD HH:MM:SS`，秒级精度，日期与时间之间是**一个空格**。
+- **禁止**：`T` 分隔符、小数秒、`+08:00`、`Z`、`UTC`、RFC3339。
+- 实现：`core/contract.py: now_bj()`；`is_bj_timestamp()` 拒绝上述任何形态。
 - 所有 `at` / `started_at` / `finished_at` / `sent_at` / `updated_at` 都必须满足。
+- 外部原始时间（设备日志行、抓包、第三方回执里的时间串）**不得改写**：只允许原样保存在同级的 `raw_*` 字段（如 `raw_boot_line`、`raw_timestamp`），并在该字段旁注明来源为设备层。
 
-示例：`"2026-11-10T14:02:24.087"`
+示例：`"2026-11-10 14:02:24"`
+
+设备原始时间示例（只进 `raw_*`，不进正式时间字段）：
+```json
+{"raw_boot_line": "[1970-01-01 08:00:00.033][O][boot # project_flash] ...", <!-- time-lint:allow -->
+ "raw_timestamp": "1970-01-01 08:00:00.033"} <!-- time-lint:allow -->
+```
+上例中的小数秒属于设备侧原始数据，因此只能以 `raw_timestamp` 形式出现。
 
 ## 2. Schema
 
@@ -41,9 +49,9 @@
   "issue": "NOAH-44",
   "node": "pvm1005",
   "profile": {"name": "tcl-pvm1005", "sha256": "...", "status": "measured", "family": "tcl"},
-  "time_contract": {"zone": "Asia/Shanghai", "offset_in_string": "none", "format": "YYYY-MM-DDThh:mm:ss.sss"},
-  "started_at": "2026-11-10T14:02:24.087",
-  "finished_at": "2026-11-10T14:10:59.759",
+  "time_contract": {"zone": "Asia/Shanghai", "offset_in_string": "none", "format": "YYYY-MM-DD HH:MM:SS"},
+  "started_at": "2026-11-10 14:02:24",
+  "finished_at": "2026-11-10 14:10:59",
   "plan": ["preflight", "boot:venusa", "..."],
   "completed_steps": ["..."],
   "step_receipts": {"step": {"verdict": "PASS", "path": "..."}},

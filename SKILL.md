@@ -25,7 +25,7 @@ description: VenusA/CSK 与 HISI/HI3863 双芯片统一烧录 Skill。按 profil
 5. **draft profile 不能写**：`status: draft` 只允许 `plan` / dry-run / preflight（preflight 返回 BLOCKED 并列出待测量项）。
 6. **一台台架同时只允许一个烧录进程**：任何硬件阶段先抢 `%TEMP%\venusahisburner-<node>.lock`；被活进程持有时退出码 3，不杀进程、不抢端口。
 7. **每步先落盘再判定**：step receipt + 工具日志 + 串口原始日志 + `reset_log.jsonl`；判定顺序 BLOCKED / FAIL / PASS。
-8. **时间只写北京时间、不带时区**：`YYYY-MM-DDThh:mm:ss.sss`，`+08:00` / `Z` 都是违约（见 `references/result-contract.md`）。
+8. **时间只写北京时间、不带时区**：`YYYY-MM-DD HH:MM:SS`（空格分隔、秒级）；`T`、小数秒、`+08:00`、`Z`、RFC3339 都是违约；设备原始时间只能原样进 `raw_*` 字段（见 `references/result-contract.md`）。
 9. **凭据只来自环境变量**：Skill / manifest / 日志 / 回执里出现 token、密码、私钥即加载失败。
 
 ## 快速开始
@@ -93,6 +93,7 @@ TCL 与 Media 的差异、隔离规则和独立验收项见 `references/profile-
 ```powershell
 python -m unittest discover -s tests -v     # 单测（不碰串口）
 python scripts\lint_scan.py --strict        # skill-git lint/scan：frontmatter、JSON、密钥扫描、compileall
+python tools\time_lint.py --gate            # 时间契约：0 违规才算过（设备原始时间行用 time-lint:allow 标注）
 ```
 
 ## 已知坑（都有现场证据）

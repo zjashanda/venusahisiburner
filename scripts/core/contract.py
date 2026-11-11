@@ -5,9 +5,14 @@ schemas, the Beijing wall-clock time contract, hashing helpers and the
 version parsers for the two MCUs.
 
 Time contract (hard): every timestamp written by this skill is Beijing
-wall-clock time with NO timezone offset in the string, e.g.
-``2026-11-10T14:05:00.123``. ``+08:00`` suffixes and UTC strings are a
-contract violation and are rejected by ``is_bj_timestamp``.
+wall-clock time, second precision, space separator, NO timezone offset in
+the string, e.g. ``2026-11-10 14:05:00``. A ``T`` separator, fractional
+seconds, ``+08:00`` suffixes and ``Z``/UTC strings are a contract violation
+and are rejected by ``is_bj_timestamp``.
+
+Raw timestamps copied out of device logs or external payloads are never
+rewritten into this format: they must be stored in a sibling ``raw_*``
+field exactly as received (see references/result-contract.md).
 """
 from __future__ import annotations
 
@@ -32,12 +37,12 @@ BJ = timezone(timedelta(hours=8), "Asia/Shanghai")
 TIME_CONTRACT: dict[str, str] = {
     "zone": "Asia/Shanghai",
     "offset_in_string": "none",
-    "format": "YYYY-MM-DDThh:mm:ss.sss",
-    "example": "2026-11-10T14:05:00.123",
+    "format": "YYYY-MM-DD HH:MM:SS",
+    "example": "2026-11-10 14:05:00",
 }
 
-_TIME_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}$")
-_TIME_FMT = "%Y-%m-%dT%H:%M:%S.%f"
+_TIME_RE = re.compile(r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$")
+_TIME_FMT = "%Y-%m-%d %H:%M:%S"
 
 ANSI = re.compile(r"\x1b\[[0-9;]*m")
 
@@ -58,8 +63,8 @@ class ContractError(RuntimeError):
 
 
 def now_bj() -> str:
-    """Current Beijing wall-clock time, millisecond precision, no offset."""
-    return datetime.now(BJ).strftime(_TIME_FMT)[:-3]
+    """Current Beijing wall-clock time, second precision, no offset."""
+    return datetime.now(BJ).strftime(_TIME_FMT)
 
 
 def parse_bj(value: str) -> datetime | None:
