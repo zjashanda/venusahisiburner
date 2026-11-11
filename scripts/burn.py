@@ -10,9 +10,11 @@ Commands:
 
 Guards (exit code 3): no profile, draft profile on a write step, no
 ``--confirm-write``, bench locked by another live process, unimplemented
-driver. Phase FAIL/BLOCKED is exit code 4. Usage/profile/asset errors are 2.
+driver. Phase FAIL/BLOCKED is exit code 4. Usage/profile/asset errors are 2,
+including an unreadable or unresolvable ``--device-snapshot`` document.
 
-Exit codes: 0 ok, 2 usage/profile/asset, 3 refused (guard), 4 step FAIL/BLOCKED.
+Exit codes: 0 ok, 2 usage/profile/asset/snapshot, 3 refused (guard),
+4 step FAIL/BLOCKED.
 """
 from __future__ import annotations
 
@@ -27,6 +29,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from core.assets import AssetError, Assets, FetchBlocked  # noqa: E402
 from core.bench import Audit, BenchError, BenchLock  # noqa: E402
 from core.contract import SCHEMAS, now_bj  # noqa: E402
+from core.device_snapshot import (DeviceSnapshotError, apply_snapshot,  # noqa: E402
+                                  resolve_snapshot)
 from core.phases import (phase_boot, phase_burn, phase_preflight, phase_receipt,  # noqa: E402
                          phase_recover, phase_verify, safe_recover, _step_receipt)
 from core.profile import Profile, ProfileError  # noqa: E402
@@ -36,7 +40,23 @@ EXIT_OK, EXIT_USAGE, EXIT_GUARD, EXIT_FAIL = 0, 2, 3, 4
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
-def plan_text(profile: Profile, assets: Assets, material_dir: Path | None, cache_dir: Path | None) -> str:
+def snapshot_lines(snapshot: dict) -> list[str]:
+    lines = [
+        "",
+        f"device snapshot: {snapshot['source']}",
+        f"  source: {snapshot['source']}",
+        f"  schema: {snapshot['schema']}",
+        f"  generated_at: {snapshot['generated_at'] or '-'}",
+        f"  mode: {snapshot['mode']}",
+        "  roles:",
+    ]
+    for role, item in snapshot["roles"].items():
+        lines.append(f"    {role}: {item['port']} ({item['state']})")
+    return lines
+
+
+def plan_text(profile: Profile, assets: Assets, material_dir: Path | None, cache_dir: Path | None,
+              snapshot: dict | None = None) -> str:
     info = profile.describe()
     lines = [
         f"node: {info['node']}",
@@ -69,6 +89,8 @@ def plan_text(profile: Profile, assets: Assets, material_dir: Path | None, cache
         entry = assets.describe(asset_id)
         lines.append(f"  {asset_id}: {entry['target_chip']} {entry['version']} {entry['file']} "
                      f"sha256={entry['sha256'][:16]}... oss://<bucket>/{entry['oss']['key']}")
+    if snapshot:
+        lines += snapshot_lines(snapshot)
     return "\n".join(lines)
 
 
@@ -134,6 +156,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--fetch-assets", action="store_true",
                         help="download missing assets through the manifest's OSS method (env credentials only)")
     parser.add_argument("--dry-run", action="store_true", help="print the plan only, touch no hardware")
+    parser.add_argument("--device-snapshot", default=None, metavar="FILE",
+                        help="device-io snapshot or role-map JSON (ark.device-io.v1 / "
+                             "ark.device-role-map.v1); its ports override the profile's")
     parser.add_argument("--confirm-write", action="store_true", help="required for boot/burn/recover steps")
     args = parser.parse_args(argv)
 
@@ -143,12 +168,16 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         profile = Profile(Path(args.profile).expanduser().resolve())
+        snapshot: dict | None = None
+        if args.device_snapshot:
+            snapshot = resolve_snapshot(Path(args.device_snapshot).expanduser().resolve(), profile)
+            apply_snapshot(profile, snapshot)
         assets = Assets(Path(args.assets).expanduser().resolve())
         assets.require(profile.asset_ids())
         plan = plan_steps(profile)
 
         if args.command == "plan" or args.dry_run:
-            print(plan_text(profile, assets, material_dir, cache_dir))
+            print(plan_text(profile, assets, material_dir, cache_dir, snapshot))
             print("\n[dry-run] no serial port opened, no burn tool started")
             return EXIT_OK
 
@@ -180,6 +209,7 @@ def main(argv: list[str] | None = None) -> int:
             "cache_dir": cache_dir, "assets": assets, "expect": expect,
             "issue": args.issue or profile.node,
             "audit": Audit(run_dir, args.issue or profile.node),
+            "device_snapshot": snapshot,
         }
         state = RunState(run_dir)
 
@@ -233,6 +263,9 @@ def main(argv: list[str] | None = None) -> int:
         text = str(exc)
         guard = any(token in text for token in ("draft", "confirm-write"))
         return EXIT_GUARD if guard else EXIT_USAGE
+    except DeviceSnapshotError as exc:
+        print(f"venusahisiburner: {exc}", file=sys.stderr)
+        return EXIT_USAGE
     except (BenchError, StateError) as exc:
         print(f"venusahisiburner: {exc}", file=sys.stderr)
         return EXIT_GUARD if "locked" in str(exc) or "不抢占" in str(exc) else EXIT_USAGE

@@ -27,6 +27,7 @@ description: VenusA/CSK 与 HISI/HI3863 双芯片统一烧录 Skill。按 profil
 7. **每步先落盘再判定**：step receipt + 工具日志 + 串口原始日志 + `reset_log.jsonl`；判定顺序 BLOCKED / FAIL / PASS。
 8. **时间只写北京时间、不带时区**：`YYYY-MM-DD HH:MM:SS`（空格分隔、秒级）；`T`、小数秒、`+08:00`、`Z`、RFC3339 都是违约；设备原始时间只能原样进 `raw_*` 字段（见 `references/result-contract.md`）。
 9. **凭据只来自环境变量**：Skill / manifest / 日志 / 回执里出现 token、密码、私钥即加载失败。
+10. **设备端口只从 device-io 的 JSON 读取**：传 `--device-snapshot` 后端口全部来自该文档，解析失败即退出（码 2），绝不回落到 profile 里的旧端口；不传则保持原有 profile 行为。本 Skill 不自行枚举 USB/串口。
 
 ## 快速开始
 
@@ -48,7 +49,40 @@ python scripts\burn.py all --profile ... --run-dir ... --material-dir ... --conf
   --expect venusa=V0.0.40 --expect hisi=V8-H363T20-WFMV206.110.1.15
 ```
 
-退出码：`0` 通过，`2` 用法/profile/资产错误，`3` 守卫拒绝（draft、缺 `--confirm-write`、台架被占用、驱动未实现），`4` 步骤 FAIL/BLOCKED。
+退出码：`0` 通过，`2` 用法/profile/资产/设备快照错误，`3` 守卫拒绝（draft、缺 `--confirm-write`、台架被占用、驱动未实现），`4` 步骤 FAIL/BLOCKED。
+
+## 设备端口：`--device-snapshot`
+
+端口不再手写死：让 `device-io` 产出 JSON，本 Skill 只读该文档。参数在所有子命令
+（`plan` / `preflight` / `step` / `all` / `receipt`）上都可用。
+
+```powershell
+# device-io 产出两种文档任选其一
+device-io ports --format json --out device-snapshot.json
+device-io roles --spec roles-spec.json --format json --save role-map.json
+
+# 用快照跑 plan（只读）
+python scripts\burn.py plan --profile scripts\profiles\tcl-pvm1005.json `
+  --run-dir D:\zhsh\workspace\tasks\<task>\run --device-snapshot device-snapshot.json
+
+# 用 role-map 跑全流程
+python scripts\burn.py all --profile ... --run-dir ... --device-snapshot role-map.json --confirm-write
+```
+
+- **接受的 schema**：`ark.device-io.v1`（原始快照，按 profile 里已声明的端口名/interface 标签
+  **精确、大小写不敏感**匹配 `ports[].device` / `ports[].interface`）与
+  `ark.device-role-map.v1`（`device-io roles` 的结果，直接取 `roles[].port`）。
+- **优先级**：给了 `--device-snapshot` 就以它为准，覆盖 `transport.log_port` /
+  `transport.burn_port` 与 `control.port`；没给则完全不改变既有行为。
+  一次运行里只要给了参数就**没有回落**：任何 role 解析不出来都直接失败。
+- **role 命名**：双芯片 profile 用 `control`、`<chip>:log`、`<chip>:burn`
+  （如 `venusa:log`、`hisi:burn`）；单芯片 profile 也接受裸 `log` / `burn`。
+- **失败语义**：role-map 里 `ambiguous` / `missing` / `conflict`、缺 role、顶层 `ok:false`，
+  或快照里 0 命中（`missing`）、多命中（`ambiguous`）都硬失败，退出码 **2**，
+  错误信息含 role、state 与 `reason`。
+- `plan` / `preflight` 输出带结构化块：`source`、`schema`、`generated_at`、`mode`、
+  `roles`（role → 端口与 state），不打印整份快照。
+- 细节与失败示例见 `references/profile-contract.md`。
 
 ## 统一状态机
 

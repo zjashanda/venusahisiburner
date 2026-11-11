@@ -20,6 +20,7 @@ from typing import Any
 from .bench import BenchError, PortLogger, open_control, power_cycle, run_tool, send_control, serial_module
 from .contract import (SCHEMAS, TIME_CONTRACT, classify_asr, now_bj, parse_versions,
                        read_text_any, sha256_file)
+from .device_snapshot import com_number
 from .state import RECEIPT, plan_steps
 
 
@@ -68,9 +69,13 @@ def phase_preflight(ctx: dict) -> dict:
     profile = ctx["profile"]
     started = now_bj()
     if not profile.measured:
-        return {"started_at": started, "verdict": "BLOCKED",
-                "reason": "profile is draft: measure the bench first",
-                "measurement_required": profile.raw.get("measurement_required") or []}
+        report: dict[str, Any] = {
+            "started_at": started, "verdict": "BLOCKED",
+            "reason": "profile is draft: measure the bench first",
+            "measurement_required": profile.raw.get("measurement_required") or []}
+        if ctx.get("device_snapshot"):
+            report["device_snapshot"] = ctx["device_snapshot"]
+        return report
 
     ports = enumerate_ports()
     expected = profile.expected_ports()
@@ -106,6 +111,7 @@ def phase_preflight(ctx: dict) -> dict:
         "started_at": started, "ports": ports, "expected_ports": expected, "missing_ports": missing,
         "captured": captured, "versions_before": versions, "expectations": expectations,
         "assets": assets_report, "verdict": verdict, "reason": reason,
+        **({"device_snapshot": ctx["device_snapshot"]} if ctx.get("device_snapshot") else {}),
     }
 
 
@@ -177,7 +183,7 @@ def _burn_hisi(ctx: dict, chip) -> dict:
     tool = ctx["assets"].resolve(chip.tool_asset, ctx.get("material_dir"), ctx.get("cache_dir"))
     binary = ctx["assets"].resolve(chip.image_asset, ctx.get("material_dir"), ctx.get("cache_dir"))
     burn = chip.burn
-    argv = [str(tool), f"-com:{chip.transport['burn_port']}", f"-bin:{binary}",
+    argv = [str(tool), f"-com:{com_number(chip.transport['burn_port'])}", f"-bin:{binary}",
             f"-signalbaud:{burn.get('signal_baud')}", f"-chiptype:{burn.get('chip_type')}"]
     argv += [f"-onlyburn:{part}" for part in burn.get("onlyburn_parts") or []]
     out_dir = Path(ctx["run_dir"]) / "tool_logs"
